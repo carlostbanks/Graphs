@@ -1,3 +1,7 @@
+from collections import deque
+import random
+import math
+
 class User:
     def __init__(self, name):
         self.name = name
@@ -45,8 +49,21 @@ class SocialGraph:
         # !!!! IMPLEMENT ME
 
         # Add users
+        for i in range(num_users):
+            self.add_user(f"User {i}")
 
         # Create friendships
+        possible_friendships = []
+        for user_id in self.users:
+            # To prevent duplicate friendship, create from user_id + 1
+            for friend_id in range(user_id + 1, self.last_id + 1):
+                possible_friendships.append((user_id, friend_id))
+
+        random.shuffle(possible_friendships)
+
+        for i in range(math.floor(num_users * avg_friendships / 2)):
+            friendship = possible_friendships[i]
+            self.add_friendship(friendship[0], friendship[1])
 
     def get_all_social_paths(self, user_id):
         """
@@ -59,8 +76,71 @@ class SocialGraph:
         """
         visited = {}  # Note that this is a dictionary, not a set
         # !!!! IMPLEMENT ME
+        queue = deque()
+        queue.append([user_id])
+        while len(queue) > 0:
+            currPath = queue.popleft()
+            currNode = currPath[-1]
+            visited[currNode] = currPath
+            for friend in self.friendships[currNode]:
+                if friend not in visited:
+                    new_path = list(currPath)
+                    new_path.append(friend)
+                    queue.append(new_path)
         return visited
 
+    def count_direct_friends(self, friend_id):
+        if friend_id not in self.friendships:
+            print(f"WARNING: No user exists with friend_id: {friend_id}")
+            return -1
+        return len(self.friendships[friend_id])
+    
+    def count_extended_network(self, friend_id):
+        if friend_id not in self.friendships:
+            print(f"WARNING: No user exists with friend_id: {friend_id}")
+            return -1
+        return len(self.get_all_social_paths(friend_id))
+
+    def percent_of_total_users_in_extended_network(self, friend_id):
+        if friend_id not in self.friendships:
+            print(f"WARNING: No user exists with friend_id: {friend_id}")
+            return -1
+        return (self.count_extended_network(friend_id) / len(self.users)) * 100
+    
+    def avg_degree_of_separation_in_extended_network(self, friend_id):
+        if friend_id not in self.friendships:
+            print(f"WARNING: No user exists with friend_id: {friend_id}")
+            return -1
+        degrees_of_separation = []
+        extended_network = self.get_all_social_paths
+        degrees_of_separation = [len(p) for p in self.get_all_social_paths(friend_id).values()]
+        return sum(degrees_of_separation) / len(degrees_of_separation)
+
+    def print_stats(self):
+        direct_friends_count_list = []
+        extended_network_count_list = []
+        avg_degree_of_separation_in_extended_network_list = []
+
+        for friend_id in self.users.keys():
+            direct_friends_count_list.append(self.count_direct_friends(friend_id))
+            extended_network_count_list.append(self.count_extended_network(friend_id))
+            avg_degree_of_separation_in_extended_network_list.append(self.avg_degree_of_separation_in_extended_network(friend_id))
+
+        total_avg_direct_friends = self.average(direct_friends_count_list)
+        total_avg_extended_network = self.average(extended_network_count_list)
+        total_avg_percent_of_total_users_in_extended_network = (total_avg_extended_network / len(self.users)) * 100
+        total_avg_degree_of_separation_in_extended_network = self.average(avg_degree_of_separation_in_extended_network_list)
+        
+        print(f"""
+        Total number of users in social network: {len(self.users)}
+        Average number of friends per user: {total_avg_direct_friends}
+        Average size of a user's extended network: {total_avg_extended_network}
+        Percentage of total users in a user's extended network: {total_avg_percent_of_total_users_in_extended_network}%
+        Average degrees of separation in a user's extended network: {total_avg_degree_of_separation_in_extended_network}
+        """)
+    
+    def average(self, list_of_values):
+        return sum(list_of_values) / len(list_of_values)
 
 if __name__ == '__main__':
     sg = SocialGraph()
